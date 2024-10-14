@@ -161,7 +161,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		//Getクエリが来たらデータベースを検索
-		rows, err := db.Query("SELECT id, name, date, good, cotent, retweet FROM tweet")
+		rows, err := db.Query("SELECT id, name, date, good, content, retweet FROM tweet")
 		if err != nil {
 			print("search_error")
 			w.WriteHeader(http.StatusInternalServerError)
