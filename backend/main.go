@@ -206,6 +206,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		id := ulid.MustNew(ulid.Timestamp(t), entropy)
 
 		//データベースに書き込む
+		fmt.Println(id.String(), reqBody.Name, t.String(), reqBody.Good, reqBody.Content, reqBody.Retweet)
 		_, err2 := db.Exec("INSERT INTO tweet (id, name, date, good, content, retweet) VALUES (?, ?, ?, ?, ?, ?)", id.String(), reqBody.Name, t.String(), reqBody.Good, reqBody.Content, reqBody.Retweet)
 		if err2 != nil {
 			w.WriteHeader(http.StatusInternalServerError)
