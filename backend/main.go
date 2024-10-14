@@ -16,10 +16,18 @@ import (
 	"time"
 )
 
+//	type UserResForHTTPGet struct {
+//		Id   string `json:"id"`
+//		Name string `json:"name"`
+//		Age  int    `json:"age"`
+//	}
 type UserResForHTTPGet struct {
-	Id   string `json:"id"`
-	Name string `json:"name"`
-	Age  int    `json:"age"`
+	Id      string `json:"id"`
+	Name    string `json:"name"`
+	Date    string `json:"date"`
+	Good    int    `json:"good"`
+	Content string `json:"content"`
+	Retweet int    `json:"retweet"`
 }
 
 type responseMessage struct {
@@ -141,8 +149,7 @@ func init() {
 //	}
 //}
 
-
-//変更後
+// 変更後
 func handler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
@@ -154,7 +161,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		//Getクエリが来たらデータベースを検索
-		rows, err := db.Query("SELECT id, name, age FROM user")
+		rows, err := db.Query("SELECT id, name, date, good, cotent, retweet FROM tweet")
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 			return
@@ -163,7 +170,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		var items []UserResForHTTPGet
 		for rows.Next() {
 			var u UserResForHTTPGet
-			if err := rows.Scan(&u.Id, &u.Name, &u.Age); err != nil {
+			if err := rows.Scan(&u.Id, &u.Name, &u.Date, &u.Good, &u.Content, &u.Retweet); err != nil {
 				print("error")
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -188,9 +195,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		}
 		defer r.Body.Close()
 
-		if len(reqBody.Name) > 50 || reqBody.Name == "" || reqBody.Age < 20 || reqBody.Age > 80 {
-			w.WriteHeader(http.StatusBadRequest)
-		}
+		//if len(reqBody.Name) > 50 || reqBody.Name == "" || reqBody.Age < 20 || reqBody.Age > 80 {
+		//	w.WriteHeader(http.StatusBadRequest)
+		//}
 
 		//ULIDを用いてidを生成するプロセス
 		t := time.Now()
@@ -198,7 +205,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		id := ulid.MustNew(ulid.Timestamp(t), entropy)
 
 		//データベースに書き込む
-		_, err2 := db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", id.String(), reqBody.Name, reqBody.Age)
+		_, err2 := db.Exec("INSERT INTO tweet (id, name, date, good, content, retweet) VALUES (?, ?, ?, ?, ?, ?)", id.String(), reqBody.Name, t.String(), reqBody.Good, reqBody.Content, reqBody.Retweet)
 		if err2 != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -221,7 +228,6 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
-
 
 func main() {
 	// ② /userでリクエストされたらnameパラメーターと一致する名前を持つレコードをJSON形式で返す
