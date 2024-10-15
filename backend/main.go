@@ -236,11 +236,21 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 	}
 }
 func toggleLike(w http.ResponseWriter, r *http.Request) {
-	var like Like
-	if err := json.NewDecoder(r.Body).Decode(&like); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 	}
+	var like Like
+	if err := json.Unmarshal(body, &like); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	defer r.Body.Close()
+
+	//var like Like
+	//if err := json.NewDecoder(r.Body).Decode(&like); err != nil {
+	//	http.Error(w, err.Error(), http.StatusBadRequest)
+	//	return
+	//}
 	log.Printf(like.TweetID, like.UserID)
 	res, err := db.Exec("DELETE FROM likes WHERE tweet_id = ? AND user_id = ?", like.TweetID, like.UserID)
 	if err != nil {
