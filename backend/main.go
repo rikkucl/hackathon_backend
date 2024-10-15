@@ -264,7 +264,7 @@ func toggleLike(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	_, err = db.Exec("UPDATE tweet SET liked = (SELECT COUNT(*) FROM likes) WHERE tweet_id = ?) WHERE id = ?", like.TweetID, like.TweetID)
+	_, err = db.Exec("UPDATE tweet SET liked = (SELECT COUNT(*) FROM likes WHERE tweet_id = ?) WHERE id = ?", like.TweetID, like.TweetID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
