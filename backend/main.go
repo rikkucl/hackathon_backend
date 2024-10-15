@@ -21,13 +21,17 @@ import (
 //		Name string `json:"name"`
 //		Age  int    `json:"age"`
 //	}
-type UserResForHTTPGet struct {
+type TweetResForHTTPGet struct {
 	Id      string `json:"id"`
 	Name    string `json:"name"`
 	Date    string `json:"date"`
-	Good    int    `json:"good"`
+	liked   int    `json:"liked"`
 	Content string `json:"content"`
 	Retweet int    `json:"retweet"`
+}
+type Like struct {
+	TweetID string `json:"tweet_id"`
+	UserID  string `json:"user_id"`
 }
 
 type responseMessage struct {
@@ -150,7 +154,7 @@ func init() {
 //}
 
 // 変更後
-func handler(w http.ResponseWriter, r *http.Request) {
+func getTweet(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
 	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
@@ -161,17 +165,17 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		//Getクエリが来たらデータベースを検索
-		rows, err := db.Query("SELECT id, name, date, good, content, retweet FROM tweet")
+		rows, err := db.Query("SELECT id, name, date, liked, content, retweet FROM tweet")
 		if err != nil {
 			print("search_error")
 			w.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 		//Jsonファイルにして送るプロセス
-		var items []UserResForHTTPGet
+		var items []TweetResForHTTPGet
 		for rows.Next() {
-			var u UserResForHTTPGet
-			if err := rows.Scan(&u.Id, &u.Name, &u.Date, &u.Good, &u.Content, &u.Retweet); err != nil {
+			var u TweetResForHTTPGet
+			if err := rows.Scan(&u.Id, &u.Name, &u.Date, &u.liked, &u.Content, &u.Retweet); err != nil {
 				print("error")
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -190,7 +194,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		if err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-		var reqBody UserResForHTTPGet
+		var reqBody TweetResForHTTPGet
 		if err := json.Unmarshal(body, &reqBody); err != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -208,7 +212,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		//データベースに書き込む
 		current_time := t.Format("2006-01-02 15:04:05")
 		//fmt.Println(id.String(), reqBody.Name, current_time, reqBody.Good, reqBody.Content, reqBody.Retweet)
-		_, err2 := db.Exec("INSERT INTO tweet (id, name, date, good, content, retweet) VALUES (?, ?, ?, ?, ?, ?)", id.String(), reqBody.Name, current_time, reqBody.Good, reqBody.Content, reqBody.Retweet)
+		_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet) VALUES (?, ?, ?, ?, ?, ?)", id.String(), reqBody.Name, current_time, reqBody.liked, reqBody.Content, reqBody.Retweet)
 		if err2 != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
@@ -231,10 +235,36 @@ func handler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+func toggleLike(w http.ResponseWriter, r *http.Request) {
+	var like Like
+	if err := json.NewDecoder(r.Body).Decode(&like); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	res, err := db.Exec("DELETE FROM likes WHERE tweet_id = ? AND user_id = ?", like.TweetID, like.UserID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if rowsAffected, err := res.RowsAffected(); rowsAffected == 0 {
+		_, err = db.Exec("INSERT INTO likes (tweet_id, user_id) VALUES (?, ?)", like.TweetID, like.UserID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	_, err = db.Exec("UPDATE tweets SET liked = (SELECT COUNT(*) FROM likes) WHERE tweet_id = ?) WHERE id = ?", like.TweetID, like.UserID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+}
 
 func main() {
 	// ② /userでリクエストされたらnameパラメーターと一致する名前を持つレコードをJSON形式で返す
-	http.HandleFunc("/user", handler)
+	http.HandleFunc("/tweet", getTweet)
+	http.HandleFunc("/like", toggleLike)
 
 	// ③ Ctrl+CでHTTPサーバー停止時にDBをクローズする
 	closeDBWithSysCall()
