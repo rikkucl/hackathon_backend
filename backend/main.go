@@ -241,6 +241,7 @@ func toggleLike(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	log.Printf(like.TweetID, like.UserID)
 	res, err := db.Exec("DELETE FROM likes WHERE tweet_id = ? AND user_id = ?", like.TweetID, like.UserID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
