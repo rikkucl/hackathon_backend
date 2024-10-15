@@ -251,7 +251,7 @@ func toggleLike(w http.ResponseWriter, r *http.Request) {
 	//	http.Error(w, err.Error(), http.StatusBadRequest)
 	//	return
 	//}
-	log.Printf(like.TweetID, like.UserID)
+	log.Printf("like.tweet", like.TweetID, "like.userid", like.UserID)
 	res, err := db.Exec("DELETE FROM likes WHERE tweet_id = ? AND user_id = ?", like.TweetID, like.UserID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -264,7 +264,7 @@ func toggleLike(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
-	_, err = db.Exec("UPDATE tweets SET liked = (SELECT COUNT(*) FROM likes) WHERE tweet_id = ?) WHERE id = ?", like.TweetID, like.UserID)
+	_, err = db.Exec("UPDATE tweets SET liked = (SELECT COUNT(*) FROM likes) WHERE tweet_id = ?) WHERE id = ?", like.TweetID, like.TweetID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
