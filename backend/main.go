@@ -25,7 +25,7 @@ type TweetResForHTTPGet struct {
 	Id      string `json:"id"`
 	Name    string `json:"name"`
 	Date    string `json:"date"`
-	liked   int    `json:"liked"`
+	Liked   int    `json:"liked"`
 	Content string `json:"content"`
 	Retweet int    `json:"retweet"`
 }
@@ -175,7 +175,7 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 		var items []TweetResForHTTPGet
 		for rows.Next() {
 			var u TweetResForHTTPGet
-			if err := rows.Scan(&u.Id, &u.Name, &u.Date, &u.liked, &u.Content, &u.Retweet); err != nil {
+			if err := rows.Scan(&u.Id, &u.Name, &u.Date, &u.Liked, &u.Content, &u.Retweet); err != nil {
 				print("error")
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -212,7 +212,7 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 		//データベースに書き込む
 		current_time := t.Format("2006-01-02 15:04:05")
 		//fmt.Println(id.String(), reqBody.Name, current_time, reqBody.Good, reqBody.Content, reqBody.Retweet)
-		_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet) VALUES (?, ?, ?, ?, ?, ?)", id.String(), reqBody.Name, current_time, reqBody.liked, reqBody.Content, reqBody.Retweet)
+		_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet) VALUES (?, ?, ?, ?, ?, ?)", id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet)
 		if err2 != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
