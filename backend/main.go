@@ -28,6 +28,7 @@ type TweetResForHTTPGet struct {
 	Liked   int    `json:"liked"`
 	Content string `json:"content"`
 	Retweet int    `json:"retweet"`
+	Figid   string `json:"figid"`
 }
 type Like struct {
 	TweetID string `json:"tweet_id"`
@@ -165,7 +166,7 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		//Getクエリが来たらデータベースを検索
-		rows, err := db.Query("SELECT id, name, date, liked, content, retweet FROM tweet")
+		rows, err := db.Query("SELECT id, name, date, liked, content, retweet, figid FROM tweet")
 		if err != nil {
 			print("search_error")
 			w.WriteHeader(http.StatusInternalServerError)
@@ -175,7 +176,7 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 		var items []TweetResForHTTPGet
 		for rows.Next() {
 			var u TweetResForHTTPGet
-			if err := rows.Scan(&u.Id, &u.Name, &u.Date, &u.Liked, &u.Content, &u.Retweet); err != nil {
+			if err := rows.Scan(&u.Id, &u.Name, &u.Date, &u.Liked, &u.Content, &u.Retweet, &u.Figid); err != nil {
 				print("error")
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -212,7 +213,7 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 		//データベースに書き込む
 		current_time := t.Format("2006-01-02 15:04:05")
 		//fmt.Println(id.String(), reqBody.Name, current_time, reqBody.Good, reqBody.Content, reqBody.Retweet)
-		_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet) VALUES (?, ?, ?, ?, ?, ?)", id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet)
+		_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet, figid) VALUES (?, ?, ?, ?, ?, ?)", id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet, reqBody.Figid)
 		if err2 != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
