@@ -22,13 +22,16 @@ import (
 //		Age  int    `json:"age"`
 //	}
 type TweetResForHTTPGet struct {
-	Id      string `json:"id"`
-	Name    string `json:"name"`
-	Date    string `json:"date"`
-	Liked   int    `json:"liked"`
-	Content string `json:"content"`
-	Retweet int    `json:"retweet"`
-	Figid   string `json:"figid"`
+	Id           string `json:"id"`
+	Name         string `json:"name"`
+	Date         string `json:"date"`
+	Liked        int    `json:"liked"`
+	Content      string `json:"content"`
+	Retweet      int    `json:"retweet"`
+	Figid        string `json:"figid"`
+	Code         string `json:"code"`
+	Errormessage string `json:"errormessage"`
+	Lang         string `json:"lang"`
 }
 type Like struct {
 	TweetID string `json:"tweet_id"`
@@ -166,7 +169,7 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		//Getクエリが来たらデータベースを検索
-		rows, err := db.Query("SELECT id, name, date, liked, content, retweet, figid FROM tweet")
+		rows, err := db.Query("SELECT id, name, date, liked, content, retweet, figid, code, errormeggase, lang FROM tweet")
 		if err != nil {
 			print("search_error")
 			w.WriteHeader(http.StatusInternalServerError)
@@ -176,7 +179,7 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 		var items []TweetResForHTTPGet
 		for rows.Next() {
 			var u TweetResForHTTPGet
-			if err := rows.Scan(&u.Id, &u.Name, &u.Date, &u.Liked, &u.Content, &u.Retweet, &u.Figid); err != nil {
+			if err := rows.Scan(&u.Id, &u.Name, &u.Date, &u.Liked, &u.Content, &u.Retweet, &u.Figid, &u.Code, &u.Errormessage, &u.Lang); err != nil {
 				print("error")
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -213,7 +216,7 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 		//データベースに書き込む
 		current_time := t.Format("2006-01-02 15:04:05")
 		//fmt.Println(id.String(), reqBody.Name, current_time, reqBody.Good, reqBody.Content, reqBody.Retweet)
-		_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet, figid) VALUES (?, ?, ?, ?, ?, ?, ?)", id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet, reqBody.Figid)
+		_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet, figid, code, errormessage, lang) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet, reqBody.Figid)
 		if err2 != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
