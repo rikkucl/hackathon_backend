@@ -32,6 +32,7 @@ type TweetResForHTTPGet struct {
 	Code         string `json:"code"`
 	Errormessage string `json:"errormessage"`
 	Lang         string `json:"lang"`
+	Replyto      string `json:"replyto"`
 }
 type Like struct {
 	TweetID string `json:"tweet_id"`
@@ -169,7 +170,7 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		//Getクエリが来たらデータベースを検索
-		rows, err := db.Query("SELECT id, name, date, liked, content, retweet, figid, code, errormessage, lang FROM tweet")
+		rows, err := db.Query("SELECT id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto FROM tweet")
 		if err != nil {
 			print("search_error")
 			w.WriteHeader(http.StatusInternalServerError)
@@ -179,7 +180,7 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 		var items []TweetResForHTTPGet
 		for rows.Next() {
 			var u TweetResForHTTPGet
-			if err := rows.Scan(&u.Id, &u.Name, &u.Date, &u.Liked, &u.Content, &u.Retweet, &u.Figid, &u.Code, &u.Errormessage, &u.Lang); err != nil {
+			if err := rows.Scan(&u.Id, &u.Name, &u.Date, &u.Liked, &u.Content, &u.Retweet, &u.Figid, &u.Code, &u.Errormessage, &u.Lang, &u.Replyto); err != nil {
 				print("error")
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -216,11 +217,11 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 		//データベースに書き込む
 		current_time := t.Format("2006-01-02 15:04:05")
 		//fmt.Println(id.String(), reqBody.Name, current_time, reqBody.Good, reqBody.Content, reqBody.Retweet)
-		_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet, figid, code, errormessage, lang) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet, reqBody.Figid, reqBody.Code, reqBody.Errormessage, reqBody.Lang)
+		_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet, reqBody.Figid, reqBody.Code, reqBody.Errormessage, reqBody.Lang, reqBody.Replyto)
 		if err2 != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-
+		
 		//書き込みができたらステータスを変更し、idを出力
 		w.WriteHeader(http.StatusOK)
 		bytes, err3 := json.Marshal(responseMessage{
