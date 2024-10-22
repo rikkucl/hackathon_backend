@@ -22,19 +22,20 @@ import (
 //		Age  int    `json:"age"`
 //	}
 type TweetResForHTTPGet struct {
-	Id           string `json:"id"`
-	Name         string `json:"name"`
-	Date         string `json:"date"`
-	Liked        int    `json:"liked"`
-	Content      string `json:"content"`
-	Retweet      int    `json:"retweet"`
-	Figid        string `json:"figid"`
-	Code         string `json:"code"`
-	Errormessage string `json:"errormessage"`
-	Lang         string `json:"lang"`
-	Replyto      string `json:"replyto"`
-	Replynumber  string `json:"replynumber"`
-	Retweetto    string `json:"retweetto"`
+	Id             string `json:"id"`
+	Name           string `json:"name"`
+	Date           string `json:"date"`
+	Liked          int    `json:"liked"`
+	Content        string `json:"content"`
+	Retweet        int    `json:"retweet"`
+	Figid          string `json:"figid"`
+	Code           string `json:"code"`
+	Errormessage   string `json:"errormessage"`
+	Lang           string `json:"lang"`
+	Replyto        string `json:"replyto"`
+	Replynumber    string `json:"replynumber"`
+	Retweetto      string `json:"retweetto"`
+	Retweetcomment string `json:"retweetcomment"`
 }
 type Like struct {
 	TweetID string `json:"tweet_id"`
@@ -67,7 +68,6 @@ func init() {
 	db = _db
 }
 
-// 変更後
 func getTweet(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
@@ -79,7 +79,7 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		//Getクエリが来たらデータベースを検索
-		rows, err := db.Query("SELECT id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto, replynumber, retweetto FROM tweet")
+		rows, err := db.Query("SELECT id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto, replynumber, retweetto, retweetcomment FROM tweet")
 		if err != nil {
 			print("search_error")
 			w.WriteHeader(http.StatusInternalServerError)
@@ -89,7 +89,7 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 		var items []TweetResForHTTPGet
 		for rows.Next() {
 			var u TweetResForHTTPGet
-			if err := rows.Scan(&u.Id, &u.Name, &u.Date, &u.Liked, &u.Content, &u.Retweet, &u.Figid, &u.Code, &u.Errormessage, &u.Lang, &u.Replyto, &u.Replynumber, &u.Retweetto); err != nil {
+			if err := rows.Scan(&u.Id, &u.Name, &u.Date, &u.Liked, &u.Content, &u.Retweet, &u.Figid, &u.Code, &u.Errormessage, &u.Lang, &u.Replyto, &u.Replynumber, &u.Retweetto, &u.Retweetcomment); err != nil {
 				print("error")
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -126,17 +126,19 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 		//データベースに書き込む
 		current_time := t.Format("2006-01-02 15:04:05")
 		//fmt.Println(id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet, )
-		_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto, replynumber, retweetto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)", id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet, reqBody.Figid, reqBody.Code, reqBody.Errormessage, reqBody.Lang, reqBody.Replyto, reqBody.Retweetto)
+		_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto, replynumber, retweetto, retweetcomment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)", id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet, reqBody.Figid, reqBody.Code, reqBody.Errormessage, reqBody.Lang, reqBody.Replyto, reqBody.Retweetto, reqBody.Retweetcomment)
 		if err2 != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 
 		_, err3 := db.Exec("UPDATE tweet t JOIN(SELECT replyto, COUNT(*) AS reply_count FROM tweet GROUP BY replyto) AS counts ON t.id = counts.replyto SET t.replynumber = counts.reply_count WHERE counts.replyto IS NOT NULL")
 		if err3 != nil {
+			fmt.Println("err3")
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		_, err4 := db.Exec("UPDATE tweet t JOIN(SELECT retweetto, COUNT(*) AS retweet_count FROM tweet GROUP BY retweetto) AS counts ON t.id = counts.retweetto SET t.retweet = counts.reply_count WHERE counts.retweetto IS NOT NULL")
 		if err4 != nil {
+			fmt.Println("err4")
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		//書き込みができたらステータスを変更し、idを出力
