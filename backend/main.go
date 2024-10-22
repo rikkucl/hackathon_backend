@@ -125,8 +125,8 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 
 		//データベースに書き込む
 		current_time := t.Format("2006-01-02 15:04:05")
-		//fmt.Println(id.String(), reqBody.Name, current_time, reqBody.Good, reqBody.Content, reqBody.Retweet)
-		_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto, replynumber, retweetto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)", id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet, reqBody.Figid, reqBody.Code, reqBody.Errormessage, reqBody.Lang, reqBody.Replyto, reqBody.Retweetto)
+		//fmt.Println(id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet, )
+		_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto, replynumber, retweetto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)", id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet, reqBody.Figid, reqBody.Code, reqBody.Errormessage, reqBody.Lang, reqBody.Replyto, reqBody.Retweetto)
 		if err2 != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
