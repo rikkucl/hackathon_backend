@@ -33,6 +33,8 @@ type TweetResForHTTPGet struct {
 	Errormessage string `json:"errormessage"`
 	Lang         string `json:"lang"`
 	Replyto      string `json:"replyto"`
+	Replynumber  string `json:"replynumber"`
+	Retweetto    string `json:"retweetto"`
 }
 type Like struct {
 	TweetID string `json:"tweet_id"`
@@ -65,99 +67,6 @@ func init() {
 	db = _db
 }
 
-// ② /userでリクエストされたらnameパラメーターと一致する名前を持つレコードをJSON形式で返す
-
-//差分
-//func handler(w http.ResponseWriter, r *http.Request) {
-//	switch r.Method {
-//	case http.MethodGet:
-//		// ②-1
-//		name := r.URL.Query().Get("name") // To be filled
-//		if name == "" {
-//			log.Println("fail: name is empty")
-//			w.WriteHeader(http.StatusBadRequest)
-//			return
-//		}
-//
-//		// ②-2
-//		rows, err := db.Query("SELECT id, name, age FROM user WHERE name = ?", name)
-//		if err != nil {
-//			log.Printf("fail: db.Query, %v\n", err)
-//			w.WriteHeader(http.StatusInternalServerError)
-//			return
-//		}
-//
-//		// ②-3
-//		users := make([]UserResForHTTPGet, 0)
-//		for rows.Next() {
-//			var u UserResForHTTPGet
-//			if err := rows.Scan(&u.Id, &u.Name, &u.Age); err != nil {
-//				log.Printf("fail: rows.Scan, %v\n", err)
-//
-//				if err := rows.Close(); err != nil { // 500を返して終了するが、その前にrowsのClose処理が必要
-//					log.Printf("fail: rows.Close(), %v\n", err)
-//				}
-//				w.WriteHeader(http.StatusInternalServerError)
-//				return
-//			}
-//			users = append(users, u)
-//		}
-//
-//		// ②-4
-//		bytes, err := json.Marshal(users)
-//		if err != nil {
-//			log.Printf("fail: json.Marshal, %v\n", err)
-//			w.WriteHeader(http.StatusInternalServerError)
-//			return
-//		}
-//		w.Header().Set("Content-Type", "application/json")
-//		w.Write(bytes)
-//	case http.MethodPost:
-//		//postしたファイルを読み取るプロセス
-//		body, err := io.ReadAll(r.Body)
-//		if err != nil {
-//			w.WriteHeader(http.StatusInternalServerError)
-//		}
-//		var reqBody UserResForHTTPGet
-//		if err := json.Unmarshal(body, &reqBody); err != nil {
-//			w.WriteHeader(http.StatusInternalServerError)
-//		}
-//		defer r.Body.Close()
-//
-//		if len(reqBody.Name) > 50 || reqBody.Name == "" || reqBody.Age < 20 || reqBody.Age > 80 {
-//			w.WriteHeader(http.StatusBadRequest)
-//		}
-//
-//		//ULIDを用いてidを生成するプロセス
-//		t := time.Now()
-//		entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
-//		id := ulid.MustNew(ulid.Timestamp(t), entropy)
-//
-//		//データベースに書き込む
-//		_, err2 := db.Exec("INSERT INTO user (id, name, age) VALUES (?, ?, ?)", id.String(), reqBody.Name, reqBody.Age)
-//		if err2 != nil {
-//			w.WriteHeader(http.StatusInternalServerError)
-//		}
-//
-//		//書き込みができたらステータスを変更し、idを出力
-//		w.WriteHeader(http.StatusOK)
-//		bytes, err3 := json.Marshal(responseMessage{
-//			Message: "id :" + id.String(),
-//		})
-//		if err3 != nil {
-//			w.WriteHeader(http.StatusInternalServerError)
-//			return
-//		}
-//		w.Header().Set("Content-Type", "application/json")
-//		w.Write(bytes)
-//		return
-//	default:
-//		log.Printf("fail: HTTP Method is %s\n", r.Method)
-//		w.WriteHeader(http.StatusBadRequest)
-//		return
-//	}
-//}
-
 // 変更後
 func getTweet(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -170,7 +79,7 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case http.MethodGet:
 		//Getクエリが来たらデータベースを検索
-		rows, err := db.Query("SELECT id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto FROM tweet")
+		rows, err := db.Query("SELECT id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto, replynumber, retweetto FROM tweet")
 		if err != nil {
 			print("search_error")
 			w.WriteHeader(http.StatusInternalServerError)
@@ -180,7 +89,7 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 		var items []TweetResForHTTPGet
 		for rows.Next() {
 			var u TweetResForHTTPGet
-			if err := rows.Scan(&u.Id, &u.Name, &u.Date, &u.Liked, &u.Content, &u.Retweet, &u.Figid, &u.Code, &u.Errormessage, &u.Lang, &u.Replyto); err != nil {
+			if err := rows.Scan(&u.Id, &u.Name, &u.Date, &u.Liked, &u.Content, &u.Retweet, &u.Figid, &u.Code, &u.Errormessage, &u.Lang, &u.Replyto, &u.Retweetto); err != nil {
 				print("error")
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -217,11 +126,19 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 		//データベースに書き込む
 		current_time := t.Format("2006-01-02 15:04:05")
 		//fmt.Println(id.String(), reqBody.Name, current_time, reqBody.Good, reqBody.Content, reqBody.Retweet)
-		_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)", id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet, reqBody.Figid, reqBody.Code, reqBody.Errormessage, reqBody.Lang, reqBody.Replyto)
+		_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto, replynumber, retweetto) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)", id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet, reqBody.Figid, reqBody.Code, reqBody.Errormessage, reqBody.Lang, reqBody.Replyto, reqBody.Retweetto)
 		if err2 != nil {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-		
+
+		_, err3 := db.Exec("UPDATE tweet t SET replynumber = (SELECT COUNT(*) FROM tweet t2 WHERE t2.replyto = t.tweet)")
+		if err3 != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		_, err4 := db.Exec("UPDATE tweet t SET retweet = (SELECT COUNT(*) FROM tweet t2 WHERE t2.retweetto = t.tweet)")
+		if err4 != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
 		//書き込みができたらステータスを変更し、idを出力
 		w.WriteHeader(http.StatusOK)
 		bytes, err3 := json.Marshal(responseMessage{
