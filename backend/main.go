@@ -242,6 +242,15 @@ func follow(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		defer r.Body.Close()
+		res, err := db.Exec("DELETE FROM followreq WHERE followerrew = ? AND followedreq = ?", reqBody.Follower, reqBody.Followed)
+		if rowsAffected, err := res.RowsAffected(); rowsAffected == 0 {
+			fmt.Println("follow request do not exist")
+			http.Error(w, "follow request do not exist", http.StatusInternalServerError)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
 		_, err2 := db.Exec("INSERT INTO follow (follower, followed) VALUES (?, ?)", reqBody.Follower, reqBody.Followed)
 		if err2 != nil {
 			fmt.Println("error in writing into follow")
@@ -292,11 +301,25 @@ func followreq(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		defer r.Body.Close()
-		_, err2 := db.Exec("INSERT INTO followreq (followerreq, followedreq) VALUES (?, ?)", reqBody.Followerreq, reqBody.Followedreq)
-		if err2 != nil {
-			fmt.Println("error in writing into follow")
-			w.WriteHeader(http.StatusInternalServerError)
+
+		res, err := db.Exec("DELETE FROM followreq WHERE followerrew = ? AND followedreq = ?", reqBody.Followerreq, reqBody.Followedreq)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
+		if rowsAffected, err := res.RowsAffected(); rowsAffected == 0 {
+			_, err = db.Exec("INSERT INTO followreq (followerreq, followedreq) VALUES (?, ?)", reqBody.Followerreq, reqBody.Followedreq)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+
+		//_, err2 := db.Exec("INSERT INTO followreq (followerreq, followedreq) VALUES (?, ?)", reqBody.Followerreq, reqBody.Followedreq)
+		//if err2 != nil {
+		//	fmt.Println("error in writing into follow")
+		//	w.WriteHeader(http.StatusInternalServerError)
+		//}
 	}
 }
 
