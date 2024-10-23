@@ -302,7 +302,7 @@ func followreq(w http.ResponseWriter, r *http.Request) {
 		}
 		defer r.Body.Close()
 
-		res, err := db.Exec("DELETE FROM followreq WHERE followerrew = ? AND followedreq = ?", reqBody.Followerreq, reqBody.Followedreq)
+		res, err := db.Exec("DELETE FROM followreq WHERE followerreq = ? AND followedreq = ?", reqBody.Followerreq, reqBody.Followedreq)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
