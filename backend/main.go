@@ -304,8 +304,8 @@ func main() {
 	// ② /userでリクエストされたらnameパラメーターと一致する名前を持つレコードをJSON形式で返す
 	http.HandleFunc("/tweet", getTweet)
 	http.HandleFunc("/like", toggleLike)
-	http.HandleFunc("./follow", follow)
-	http.HandleFunc("./followreq", followreq)
+	http.HandleFunc("/follow", follow)
+	http.HandleFunc("/followreq", followreq)
 	// ③ Ctrl+CでHTTPサーバー停止時にDBをクローズする
 	closeDBWithSysCall()
 
