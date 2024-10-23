@@ -242,7 +242,7 @@ func follow(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		defer r.Body.Close()
-		res, err := db.Exec("DELETE FROM followreq WHERE followerrew = ? AND followedreq = ?", reqBody.Follower, reqBody.Followed)
+		res, err := db.Exec("DELETE FROM followreq WHERE followerreq = ? AND followedreq = ?", reqBody.Follower, reqBody.Followed)
 		if rowsAffected, err := res.RowsAffected(); rowsAffected == 0 {
 			fmt.Println("follow request do not exist")
 			http.Error(w, "follow request do not exist", http.StatusInternalServerError)
