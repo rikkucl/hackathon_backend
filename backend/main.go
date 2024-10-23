@@ -260,7 +260,7 @@ func followreq(w http.ResponseWriter, r *http.Request) {
 	}
 	switch r.Method {
 	case http.MethodGet:
-		rows, err := db.Query("SELECT followerreq, followedrew FROM followreq")
+		rows, err := db.Query("SELECT followerreq, followedreq FROM followreq")
 		if err != nil {
 			print("search_error in followreq")
 			w.WriteHeader(http.StatusInternalServerError)
