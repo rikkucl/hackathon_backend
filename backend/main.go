@@ -16,11 +16,6 @@ import (
 	"time"
 )
 
-//	type UserResForHTTPGet struct {
-//		Id   string `json:"id"`
-//		Name string `json:"name"`
-//		Age  int    `json:"age"`
-//	}
 type TweetResForHTTPGet struct {
 	Id             string `json:"id"`
 	Name           string `json:"name"`
@@ -36,6 +31,15 @@ type TweetResForHTTPGet struct {
 	Replynumber    string `json:"replynumber"`
 	Retweetto      string `json:"retweetto"`
 	Retweetcomment string `json:"retweetcomment"`
+}
+
+type FollowResForHTTPGet struct {
+	Follower string `json:"follower"`
+	Followed string `json:"followed"`
+}
+type FollowreqResForHTTPGet struct {
+	Followerreq string `json:"followerreq"`
+	Followedreq string `json:"followedreq"`
 }
 type Like struct {
 	TweetID string `json:"tweet_id"`
@@ -196,11 +200,112 @@ func toggleLike(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 }
 
+func follow(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		rows, err := db.Query("SELECT follower, followed FROM follow")
+		if err != nil {
+			print("search_error in follow")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		//Jsonファイルにして送るプロセス
+		var items []FollowResForHTTPGet
+		for rows.Next() {
+			var u FollowResForHTTPGet
+			if err := rows.Scan(&u.Follower, &u.Followed); err != nil {
+				print("error")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			items = append(items, u)
+		}
+		//Json形式にして送る
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(items); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	case http.MethodPost:
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		var reqBody FollowResForHTTPGet
+		if err := json.Unmarshal(body, &reqBody); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		defer r.Body.Close()
+		_, err2 := db.Exec("INSERT INTO follow (follower, followed) VALUES (?, ?)", reqBody.Follower, reqBody.Followed)
+		if err2 != nil {
+			fmt.Println("error in writing into follow")
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+}
+
+func followreq(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+		rows, err := db.Query("SELECT followerreq, followedrew FROM followreq")
+		if err != nil {
+			print("search_error in followreq")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		//Jsonファイルにして送るプロセス
+		var items []FollowreqResForHTTPGet
+		for rows.Next() {
+			var u FollowreqResForHTTPGet
+			if err := rows.Scan(&u.Followerreq, &u.Followedreq); err != nil {
+				print("error")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			items = append(items, u)
+		}
+		//Json形式にして送る
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(items); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	case http.MethodPost:
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		var reqBody FollowreqResForHTTPGet
+		if err := json.Unmarshal(body, &reqBody); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		defer r.Body.Close()
+		_, err2 := db.Exec("INSERT INTO followreq (followerreq, followedreq) VALUES (?, ?)", reqBody.Followerreq, reqBody.Followedreq)
+		if err2 != nil {
+			fmt.Println("error in writing into follow")
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	}
+}
+
 func main() {
 	// ② /userでリクエストされたらnameパラメーターと一致する名前を持つレコードをJSON形式で返す
 	http.HandleFunc("/tweet", getTweet)
 	http.HandleFunc("/like", toggleLike)
-
+	http.HandleFunc("./follow", follow)
+	http.HandleFunc("./followreq", followreq)
 	// ③ Ctrl+CでHTTPサーバー停止時にDBをクローズする
 	closeDBWithSysCall()
 
