@@ -403,7 +403,23 @@ func tryGemini(projectId string, region string, modelName string) error {
 	}
 	rb, _ = json.MarshalIndent(r, "", "  ")
 	fmt.Println(string(rb))
+	r, err = chat.SendMessage(
+		ctx,
+		genai.Text(" console.log(\"Hello World\") what is wrong in this code in python"))
+	if err != nil {
+		return err
+	}
+	rb, _ = json.MarshalIndent(r, "", "  ")
+	fmt.Println(string(rb))
 
+	r, err = chat.SendMessage(
+		ctx,
+		genai.Text("Execute print(\"Hello World!!\") in python"))
+	if err != nil {
+		return err
+	}
+	rb, _ = json.MarshalIndent(r, "", "  ")
+	fmt.Println(string(rb))
 	return nil
 }
 
