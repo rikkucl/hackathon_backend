@@ -344,10 +344,14 @@ func askGemini(w http.ResponseWriter, r *http.Request) {
 
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
+		print(err)
+		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 	}
 	var reqBody TweetResForHTTPGet
 	if err := json.Unmarshal(body, &reqBody); err != nil {
+		print(err)
+		fmt.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
 		return
 	}
