@@ -379,6 +379,7 @@ func askGemini(w http.ResponseWriter, r *http.Request) {
 
 	rb, _ := json.MarshalIndent(res, "", "  ")
 	fmt.Println(string(rb))
+	fmt.Println(string(res.Candidates[0].Content.Parts[0]))
 
 	t := time.Now()
 	entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
@@ -387,7 +388,7 @@ func askGemini(w http.ResponseWriter, r *http.Request) {
 	//データベースに書き込む
 	current_time := t.Format("2006-01-02 15:04:05")
 	//fmt.Println(id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet, )
-	_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto, replynumber, retweetto, retweetcomment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)", id.String(), "Gemini", current_time, reqBody.Liked, string(rb), reqBody.Retweet, reqBody.Figid, reqBody.Code, reqBody.Errormessage, reqBody.Lang, reqBody.Replyto, reqBody.Retweetto, reqBody.Retweetcomment)
+	_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto, replynumber, retweetto, retweetcomment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)", id.String(), "Gemini", current_time, reqBody.Liked, string(res.Candidates[0].Content.Parts[0]), reqBody.Retweet, reqBody.Figid, reqBody.Code, reqBody.Errormessage, reqBody.Lang, reqBody.Replyto, reqBody.Retweetto, reqBody.Retweetcomment)
 	if err2 != nil {
 		fmt.Println(err2)
 		w.WriteHeader(http.StatusInternalServerError)
