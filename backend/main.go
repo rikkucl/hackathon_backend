@@ -384,18 +384,22 @@ func askGemini(w http.ResponseWriter, r *http.Request) {
 	//fmt.Println(id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet, )
 	_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto, replynumber, retweetto, retweetcomment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)", id.String(), "Gemini", current_time, reqBody.Liked, string(rb), reqBody.Retweet, reqBody.Figid, reqBody.Code, reqBody.Errormessage, reqBody.Lang, reqBody.Replyto, reqBody.Retweetto, reqBody.Retweetcomment)
 	if err2 != nil {
+		fmt.Println("err2")
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 
 	_, err3 := db.Exec("UPDATE tweet t JOIN(SELECT replyto, COUNT(*) AS reply_count FROM tweet GROUP BY replyto) AS counts ON t.id = counts.replyto SET t.replynumber = counts.reply_count WHERE counts.replyto IS NOT NULL")
 	if err3 != nil {
 		fmt.Println("err3")
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	_, err4 := db.Exec("UPDATE tweet t JOIN(SELECT retweetto, COUNT(*) AS retweet_count FROM tweet GROUP BY retweetto) AS counts ON t.id = counts.retweetto SET t.retweet = counts.reply_count WHERE counts.retweetto IS NOT NULL")
 	if err4 != nil {
 		fmt.Println("err4")
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	//書き込みができたらステータスを変更し、idを出力
 	w.WriteHeader(http.StatusOK)
