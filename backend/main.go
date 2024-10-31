@@ -331,6 +331,13 @@ func followreq(w http.ResponseWriter, r *http.Request) {
 }
 
 func askGemini(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
 	var projectId = "term6-riku-yagashi"
 	var region = "us-central1"
 	var modelName = "gemini-1.0-pro-vision"
@@ -359,7 +366,7 @@ func askGemini(w http.ResponseWriter, r *http.Request) {
 
 	res, err := chat.SendMessage(
 		ctx,
-		genai.Text("Execute print(\"Hello World!!\") in python"))
+		genai.Text("Help me with debugging code"+"comment is"+reqBody.Content+". code is "+reqBody.Code+". language is"+reqBody.Lang+". Error message is "+reqBody.Errormessage))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
