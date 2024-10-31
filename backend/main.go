@@ -1,12 +1,14 @@
 package main
 
 import (
+	"bytes"
 	"database/sql"
 	"encoding/json"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/oklog/ulid"
 	"io"
+	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -48,6 +50,11 @@ type Like struct {
 
 type responseMessage struct {
 	Message string `json:"message"`
+}
+
+type DebugRequest struct {
+	Code    string            `json:"code"`
+	Options map[string]string `json:"options"`
 }
 
 // ① GoプログラムからMySQLへ接続
@@ -323,12 +330,44 @@ func followreq(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func askGemini(w http.ResponseWriter, r *http.Request) {
+	apiKey := os.Getenv("GEMINI_API_KEY")
+	if apiKey == "" {
+		fmt.Println("Please set GEMINI_API_KEY environment variable")
+		return
+	}
+	code := "print(\"Hello. world!\")"
+	options := map[string]string{"language": "python", "debud_mode": "full"}
+
+	degugReg := DebugRequest{Code: code, Options: options}
+	jsonData, _ := json.Marshal(degugReg)
+
+	req, err := http.NewRequest("POST", "https://api.agentbuilder.com/v1/debug", bytes.NewBuffer(jsonData))
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+apiKey)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	defer resp.Body.Close()
+
+	body, _ := ioutil.ReadAll(resp.Body)
+	fmt.Println(string(body))
+}
+
 func main() {
 	// ② /userでリクエストされたらnameパラメーターと一致する名前を持つレコードをJSON形式で返す
 	http.HandleFunc("/tweet", getTweet)
 	http.HandleFunc("/like", toggleLike)
 	http.HandleFunc("/follow", follow)
 	http.HandleFunc("/followreq", followreq)
+	http.HandleFunc("/gemini", askGemini)
 	// ③ Ctrl+CでHTTPサーバー停止時にDBをクローズする
 	closeDBWithSysCall()
 

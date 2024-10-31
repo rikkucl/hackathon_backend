@@ -7,4 +7,7 @@ require (
 	github.com/oklog/ulid v1.3.1
 )
 
-require filippo.io/edwards25519 v1.1.0 // indirect
+require (
+	cloud.google.com/go v0.116.0 // indirect
+	filippo.io/edwards25519 v1.1.0 // indirect
+)
