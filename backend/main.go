@@ -349,9 +349,10 @@ func askGemini(w http.ResponseWriter, r *http.Request) {
 	var reqBody TweetResForHTTPGet
 	if err := json.Unmarshal(body, &reqBody); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
+		return
 	}
 	defer r.Body.Close()
-
+	fmt.Println(reqBody)
 	ctx := context.Background()
 	client, err := genai.NewClient(ctx, projectId, region)
 	if err != nil {
