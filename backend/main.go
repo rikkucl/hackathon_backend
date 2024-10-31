@@ -30,7 +30,7 @@ type TweetResForHTTPGet struct {
 	Errormessage   string `json:"errormessage"`
 	Lang           string `json:"lang"`
 	Replyto        string `json:"replyto"`
-	Replynumber    string `json:"replynumber"`
+	Replynumber    int    `json:"replynumber"`
 	Retweetto      string `json:"retweetto"`
 	Retweetcomment string `json:"retweetcomment"`
 }
