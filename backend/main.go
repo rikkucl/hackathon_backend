@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"cloud.google.com/go/vertexai/genai"
+	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -17,6 +19,10 @@ import (
 	"syscall"
 	"time"
 )
+
+var projectId = "term6-riku-yagashi"
+var region = "us-central1"
+var modelName = "gemini-1.0-pro-vision"
 
 type TweetResForHTTPGet struct {
 	Id             string `json:"id"`
@@ -360,6 +366,46 @@ func askGemini(w http.ResponseWriter, r *http.Request) {
 	body, _ := ioutil.ReadAll(resp.Body)
 	fmt.Println(string(body))
 }
+func tryGemini(projectId string, region string, modelName string) error {
+	ctx := context.Background()
+	client, err := genai.NewClient(ctx, projectId, region)
+	if err != nil {
+		return fmt.Errorf("error creating client: %v", err)
+	}
+	defer client.Close()
+
+	gemini := client.GenerativeModel(modelName)
+	chat := gemini.StartChat()
+
+	r, err := chat.SendMessage(
+		ctx,
+		genai.Text("Hello"))
+	if err != nil {
+		return err
+	}
+	rb, _ := json.MarshalIndent(r, "", "  ")
+	fmt.Println(string(rb))
+
+	r, err = chat.SendMessage(
+		ctx,
+		genai.Text("What are all the colors in a rainbow?"))
+	if err != nil {
+		return err
+	}
+	rb, _ = json.MarshalIndent(r, "", "  ")
+	fmt.Println(string(rb))
+
+	r, err = chat.SendMessage(
+		ctx,
+		genai.Text("Why does it appear when it rains?"))
+	if err != nil {
+		return err
+	}
+	rb, _ = json.MarshalIndent(r, "", "  ")
+	fmt.Println(string(rb))
+
+	return nil
+}
 
 func main() {
 	// ② /userでリクエストされたらnameパラメーターと一致する名前を持つレコードをJSON形式で返す
@@ -368,6 +414,7 @@ func main() {
 	http.HandleFunc("/follow", follow)
 	http.HandleFunc("/followreq", followreq)
 	http.HandleFunc("/gemini", askGemini)
+	tryGemini(projectId, region, modelName)
 	// ③ Ctrl+CでHTTPサーバー停止時にDBをクローズする
 	closeDBWithSysCall()
 

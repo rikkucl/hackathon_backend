@@ -9,5 +9,6 @@ require (
 
 require (
 	cloud.google.com/go v0.116.0 // indirect
+	cloud.google.com/go/vertexai v0.13.1 // indirect
 	filippo.io/edwards25519 v1.1.0 // indirect
 )
