@@ -1,7 +1,6 @@
 package main
 
 import (
-	"bytes"
 	"cloud.google.com/go/vertexai/genai"
 	"context"
 	"database/sql"
@@ -10,7 +9,6 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/oklog/ulid"
 	"io"
-	"io/ioutil"
 	"log"
 	"math/rand"
 	"net/http"
@@ -19,10 +17,6 @@ import (
 	"syscall"
 	"time"
 )
-
-var projectId = "term6-riku-yagashi"
-var region = "us-central1"
-var modelName = "gemini-1.0-pro-vision"
 
 type TweetResForHTTPGet struct {
 	Id             string `json:"id"`
@@ -337,90 +331,77 @@ func followreq(w http.ResponseWriter, r *http.Request) {
 }
 
 func askGemini(w http.ResponseWriter, r *http.Request) {
-	apiKey := os.Getenv("GEMINI_API_KEY")
-	if apiKey == "" {
-		fmt.Println("Please set GEMINI_API_KEY environment variable")
-		return
-	}
-	code := "print(\"Hello. world!\")"
-	options := map[string]string{"language": "python", "debud_mode": "full"}
+	var projectId = "term6-riku-yagashi"
+	var region = "us-central1"
+	var modelName = "gemini-1.0-pro-vision"
 
-	degugReg := DebugRequest{Code: code, Options: options}
-	jsonData, _ := json.Marshal(degugReg)
-
-	req, err := http.NewRequest("POST", "https://api.agentbuilder.com/v1/debug", bytes.NewBuffer(jsonData))
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		fmt.Println(err)
-		return
+		w.WriteHeader(http.StatusInternalServerError)
 	}
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Authorization", "Bearer "+apiKey)
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println(err)
-		return
+	var reqBody TweetResForHTTPGet
+	if err := json.Unmarshal(body, &reqBody); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
 	}
-	defer resp.Body.Close()
+	defer r.Body.Close()
 
-	body, _ := ioutil.ReadAll(resp.Body)
-	fmt.Println(string(body))
-}
-func tryGemini(projectId string, region string, modelName string) error {
 	ctx := context.Background()
 	client, err := genai.NewClient(ctx, projectId, region)
 	if err != nil {
-		return fmt.Errorf("error creating client: %v", err)
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Errorf("error creating client: %v", err)
+		return
 	}
 	defer client.Close()
 
 	gemini := client.GenerativeModel(modelName)
 	chat := gemini.StartChat()
 
-	r, err := chat.SendMessage(
-		ctx,
-		genai.Text("Hello"))
-	if err != nil {
-		return err
-	}
-	rb, _ := json.MarshalIndent(r, "", "  ")
-	fmt.Println(string(rb))
-
-	r, err = chat.SendMessage(
-		ctx,
-		genai.Text("What are all the colors in a rainbow?"))
-	if err != nil {
-		return err
-	}
-	rb, _ = json.MarshalIndent(r, "", "  ")
-	fmt.Println(string(rb))
-
-	r, err = chat.SendMessage(
-		ctx,
-		genai.Text("Why does it appear when it rains?"))
-	if err != nil {
-		return err
-	}
-	rb, _ = json.MarshalIndent(r, "", "  ")
-	fmt.Println(string(rb))
-	r, err = chat.SendMessage(
-		ctx,
-		genai.Text(" console.log(\"Hello World\") what is wrong in this code in python"))
-	if err != nil {
-		return err
-	}
-	rb, _ = json.MarshalIndent(r, "", "  ")
-	fmt.Println(string(rb))
-
-	r, err = chat.SendMessage(
+	res, err := chat.SendMessage(
 		ctx,
 		genai.Text("Execute print(\"Hello World!!\") in python"))
 	if err != nil {
-		return err
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-	rb, _ = json.MarshalIndent(r, "", "  ")
+
+	rb, _ := json.MarshalIndent(res, "", "  ")
 	fmt.Println(string(rb))
-	return nil
+
+	t := time.Now()
+	entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
+	id := ulid.MustNew(ulid.Timestamp(t), entropy)
+
+	//データベースに書き込む
+	current_time := t.Format("2006-01-02 15:04:05")
+	//fmt.Println(id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet, )
+	_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto, replynumber, retweetto, retweetcomment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)", id.String(), "Gemini", current_time, reqBody.Liked, string(rb), reqBody.Retweet, reqBody.Figid, reqBody.Code, reqBody.Errormessage, reqBody.Lang, reqBody.Replyto, reqBody.Retweetto, reqBody.Retweetcomment)
+	if err2 != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+
+	_, err3 := db.Exec("UPDATE tweet t JOIN(SELECT replyto, COUNT(*) AS reply_count FROM tweet GROUP BY replyto) AS counts ON t.id = counts.replyto SET t.replynumber = counts.reply_count WHERE counts.replyto IS NOT NULL")
+	if err3 != nil {
+		fmt.Println("err3")
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	_, err4 := db.Exec("UPDATE tweet t JOIN(SELECT retweetto, COUNT(*) AS retweet_count FROM tweet GROUP BY retweetto) AS counts ON t.id = counts.retweetto SET t.retweet = counts.reply_count WHERE counts.retweetto IS NOT NULL")
+	if err4 != nil {
+		fmt.Println("err4")
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	//書き込みができたらステータスを変更し、idを出力
+	w.WriteHeader(http.StatusOK)
+	bytes, err3 := json.Marshal(responseMessage{
+		Message: "id :" + id.String(),
+	})
+	if err3 != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(bytes)
+	return
 }
 
 func main() {
@@ -430,7 +411,6 @@ func main() {
 	http.HandleFunc("/follow", follow)
 	http.HandleFunc("/followreq", followreq)
 	http.HandleFunc("/gemini", askGemini)
-	tryGemini(projectId, region, modelName)
 	// ③ Ctrl+CでHTTPサーバー停止時にDBをクローズする
 	closeDBWithSysCall()
 
