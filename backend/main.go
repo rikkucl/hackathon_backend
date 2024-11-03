@@ -480,18 +480,9 @@ func executeOnGemini(w http.ResponseWriter, r *http.Request) {
 
 	res, err := chat.SendMessage(
 		ctx,
-		genai.Text("Execute this program on gemini."+"code is "+reqBody.Code+". language is"+reqBody.Lang+"only show me console"))
+		genai.Text("Execute this code on gemini."+"code is "+reqBody.Code+". language is"+reqBody.Lang))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	res_code, err_code := chat.SendMessage(
-		ctx,
-		genai.Text("Please show me only code"))
-	if err_code != nil {
-		fmt.Println("cannot show code")
-		http.Error(w, err_code.Error(), http.StatusInternalServerError)
 		return
 	}
 
@@ -515,7 +506,7 @@ func executeOnGemini(w http.ResponseWriter, r *http.Request) {
 	//データベースに書き込む
 	current_time := t.Format("2006-01-02 15:04:05")
 	//fmt.Println(id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet, )
-	_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto, replynumber, retweetto, retweetcomment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)", id.String(), "Gemini", current_time, reqBody.Liked, res.Candidates[0].Content.Parts[0], reqBody.Retweet, reqBody.Figid, res_code.Candidates[0].Content.Parts[0], res_error.Candidates[0].Content.Parts[0], reqBody.Lang, reqBody.Replyto, reqBody.Retweetto, reqBody.Retweetcomment)
+	_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto, replynumber, retweetto, retweetcomment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)", id.String(), "Gemini", current_time, reqBody.Liked, res.Candidates[0].Content.Parts[0], reqBody.Retweet, reqBody.Figid, reqBody.Code, res_error.Candidates[0].Content.Parts[0], reqBody.Lang, reqBody.Replyto, reqBody.Retweetto, reqBody.Retweetcomment)
 	if err2 != nil {
 		fmt.Println(err2)
 		w.WriteHeader(http.StatusInternalServerError)
