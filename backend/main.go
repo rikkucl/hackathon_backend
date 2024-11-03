@@ -439,6 +439,115 @@ func askGemini(w http.ResponseWriter, r *http.Request) {
 	return
 }
 
+func executeOnGemini(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	var projectId = "term6-riku-yagashi"
+	var region = "us-central1"
+	var modelName = "gemini-1.0-pro-vision"
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		print(err)
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	var reqBody TweetResForHTTPGet
+	if err := json.Unmarshal(body, &reqBody); err != nil {
+		print(err)
+		fmt.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer r.Body.Close()
+	fmt.Println(reqBody)
+	ctx := context.Background()
+	client, err := genai.NewClient(ctx, projectId, region)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Errorf("error creating client: %v", err)
+		return
+	}
+	defer client.Close()
+
+	gemini := client.GenerativeModel(modelName)
+	chat := gemini.StartChat()
+
+	res, err := chat.SendMessage(
+		ctx,
+		genai.Text("Execute this program on gemini."+"code is "+reqBody.Code+". language is"+reqBody.Lang+"only show me console"))
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	res_code, err_code := chat.SendMessage(
+		ctx,
+		genai.Text("Please show me only code"))
+	if err_code != nil {
+		fmt.Println("cannot show code")
+		http.Error(w, err_code.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	res_error, err_error := chat.SendMessage(
+		ctx,
+		genai.Text("execute the previous code and show me only result of code"))
+	if err_error != nil {
+		fmt.Println("cannot execute")
+		http.Error(w, err_error.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	rb, _ := json.MarshalIndent(res, "", "  ")
+	fmt.Println(string(rb))
+	fmt.Println(res.Candidates[0].Content.Parts[0])
+
+	t := time.Now()
+	entropy := ulid.Monotonic(rand.New(rand.NewSource(t.UnixNano())), 0)
+	id := ulid.MustNew(ulid.Timestamp(t), entropy)
+
+	//データベースに書き込む
+	current_time := t.Format("2006-01-02 15:04:05")
+	//fmt.Println(id.String(), reqBody.Name, current_time, reqBody.Liked, reqBody.Content, reqBody.Retweet, )
+	_, err2 := db.Exec("INSERT INTO tweet (id, name, date, liked, content, retweet, figid, code, errormessage, lang, replyto, replynumber, retweetto, retweetcomment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?)", id.String(), "Gemini", current_time, reqBody.Liked, res.Candidates[0].Content.Parts[0], reqBody.Retweet, reqBody.Figid, res_code.Candidates[0].Content.Parts[0], res_error.Candidates[0].Content.Parts[0], reqBody.Lang, reqBody.Replyto, reqBody.Retweetto, reqBody.Retweetcomment)
+	if err2 != nil {
+		fmt.Println(err2)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	_, err3 := db.Exec("UPDATE tweet t JOIN(SELECT replyto, COUNT(*) AS reply_count FROM tweet GROUP BY replyto) AS counts ON t.id = counts.replyto SET t.replynumber = counts.reply_count WHERE counts.replyto IS NOT NULL")
+	if err3 != nil {
+		fmt.Println(err3)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	_, err4 := db.Exec("UPDATE tweet t JOIN(SELECT retweetto, COUNT(*) AS retweet_count FROM tweet GROUP BY retweetto) AS counts ON t.id = counts.retweetto SET t.retweet = counts.retweet_count WHERE counts.retweetto IS NOT NULL")
+	if err4 != nil {
+		fmt.Println(err4)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	//書き込みができたらステータスを変更し、idを出力
+	w.WriteHeader(http.StatusOK)
+	bytes, err3 := json.Marshal(responseMessage{
+		Message: "id :" + id.String(),
+	})
+	if err3 != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.Write(bytes)
+	return
+}
+
 func main() {
 	// ② /userでリクエストされたらnameパラメーターと一致する名前を持つレコードをJSON形式で返す
 	http.HandleFunc("/tweet", getTweet)
@@ -446,6 +555,7 @@ func main() {
 	http.HandleFunc("/follow", follow)
 	http.HandleFunc("/followreq", followreq)
 	http.HandleFunc("/gemini", askGemini)
+	http.HandleFunc("/execute", executeOnGemini)
 	// ③ Ctrl+CでHTTPサーバー停止時にDBをクローズする
 	closeDBWithSysCall()
 
