@@ -480,7 +480,7 @@ func executeOnGemini(w http.ResponseWriter, r *http.Request) {
 
 	res, err := chat.SendMessage(
 		ctx,
-		genai.Text("Execute this code on gemini."+"code is "+reqBody.Code+". language is"+reqBody.Lang))
+		genai.Text("Execute this code on gemini."+"code is "+reqBody.Code+". language is"+reqBody.Lang+"and show me the result of it"))
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
