@@ -147,7 +147,7 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 			fmt.Println("err3")
 			w.WriteHeader(http.StatusInternalServerError)
 		}
-		_, err4 := db.Exec("UPDATE tweet t JOIN(SELECT retweetto, COUNT(*) AS retweet_count FROM tweet GROUP BY retweetto) AS counts ON t.id = counts.retweetto SET t.retweet = counts.reply_count WHERE counts.retweetto IS NOT NULL")
+		_, err4 := db.Exec("UPDATE tweet t JOIN(SELECT retweetto, COUNT(*) AS retweet_count FROM tweet GROUP BY retweetto) AS counts ON t.id = counts.retweetto SET t.retweet = counts.retweet_count WHERE counts.retweetto IS NOT NULL")
 		if err4 != nil {
 			fmt.Println("err4")
 			w.WriteHeader(http.StatusInternalServerError)
