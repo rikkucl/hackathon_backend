@@ -57,6 +57,14 @@ type DebugRequest struct {
 	Options map[string]string `json:"options"`
 }
 
+type User_id struct {
+	User_id string `json:"user_id"`
+}
+
+type LikeResForHTTPGet struct {
+	Tweet_id string `json:"tweet_id"`
+}
+
 // ① GoプログラムからMySQLへ接続
 var db *sql.DB
 
@@ -170,6 +178,58 @@ func getTweet(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 }
+
+func getLike(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	switch r.Method {
+	case http.MethodGet:
+
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		var reqBody User_id
+		if err := json.Unmarshal(body, &reqBody); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		defer r.Body.Close()
+
+		//Getクエリが来たらデータベースを検索
+		rows, err := db.Query("SELECT tweet_id FROM likes WHERE user_id = ?", reqBody.User_id)
+		if err != nil {
+			print("search_error")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		//Jsonファイルにして送るプロセス
+		var items []LikeResForHTTPGet
+		for rows.Next() {
+			var u LikeResForHTTPGet
+			if err := rows.Scan(&u.Tweet_id); err != nil {
+				print("error")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			items = append(items, u)
+		}
+		//Json形式にして送る
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(items); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	default:
+		log.Printf("fail: HTTP Method is %s\n", r.Method)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+}
+
 func toggleLike(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -542,6 +602,7 @@ func executeOnGemini(w http.ResponseWriter, r *http.Request) {
 func main() {
 	// ② /userでリクエストされたらnameパラメーターと一致する名前を持つレコードをJSON形式で返す
 	http.HandleFunc("/tweet", getTweet)
+	http.HandleFunc("/getlike", getLike)
 	http.HandleFunc("/like", toggleLike)
 	http.HandleFunc("/follow", follow)
 	http.HandleFunc("/followreq", followreq)
