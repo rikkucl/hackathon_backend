@@ -188,14 +188,15 @@ func getLike(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	switch r.Method {
-	case http.MethodGet:
-
+	case http.MethodPost:
 		body, err := io.ReadAll(r.Body)
 		if err != nil {
+			print("read_error")
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		var reqBody User_id
 		if err := json.Unmarshal(body, &reqBody); err != nil {
+			print("convert_error")
 			w.WriteHeader(http.StatusInternalServerError)
 		}
 		defer r.Body.Close()
