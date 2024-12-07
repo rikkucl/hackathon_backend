@@ -48,6 +48,11 @@ type Like struct {
 	UserID  string `json:"user_id"`
 }
 
+type Favorite struct {
+	TweetID string `json:"tweet_id"`
+	UserID  string `json:"user_id"`
+}
+
 type responseMessage struct {
 	Message string `json:"message"`
 }
@@ -62,6 +67,10 @@ type User_id struct {
 }
 
 type LikeResForHTTPGet struct {
+	Tweet_id string `json:"tweet_id"`
+}
+
+type FavoriteResForHTTPGet struct {
 	Tweet_id string `json:"tweet_id"`
 }
 
@@ -391,6 +400,95 @@ func followreq(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func getfavorite(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
+	w.Header().Set("Access-Control-Allow-Headers", "Accept, Content-Type, Content-Length, Accept-Encoding, X-CSRF-Token, Authorization")
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+	switch r.Method {
+	case http.MethodPost:
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			print("read_error")
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		var reqBody User_id
+		if err := json.Unmarshal(body, &reqBody); err != nil {
+			print("convert_error")
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+		defer r.Body.Close()
+
+		//Getクエリが来たらデータベースを検索
+		rows, err := db.Query("SELECT tweet_id FROM favorites WHERE user_id = ?", reqBody.User_id)
+		if err != nil {
+			print("search_error")
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		//Jsonファイルにして送るプロセス
+		var items []FavoriteResForHTTPGet
+		for rows.Next() {
+			var u FavoriteResForHTTPGet
+			if err := rows.Scan(&u.Tweet_id); err != nil {
+				print("error")
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			items = append(items, u)
+		}
+		//Json形式にして送る
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(items); err != nil {
+			w.WriteHeader(http.StatusInternalServerError)
+		}
+	default:
+		log.Printf("fail: HTTP Method is %s\n", r.Method)
+		w.WriteHeader(http.StatusBadRequest)
+		return
+	}
+}
+
+func togglefavorite(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	var favorite Favorite
+	if err := json.Unmarshal(body, &favorite); err != nil {
+		w.WriteHeader(http.StatusInternalServerError)
+	}
+	defer r.Body.Close()
+
+	//var like Like
+	//if err := json.NewDecoder(r.Body).Decode(&like); err != nil {
+	//	http.Error(w, err.Error(), http.StatusBadRequest)
+	//	return
+	//}
+	log.Printf("like.tweet", favorite.TweetID, "like.userid", favorite.UserID)
+	res, err := db.Exec("DELETE FROM favorites WHERE tweet_id = ? AND user_id = ?", favorite.TweetID, favorite.UserID)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	if rowsAffected, err := res.RowsAffected(); rowsAffected == 0 {
+		_, err = db.Exec("INSERT INTO favorites (tweet_id, user_id) VALUES (?, ?)", favorite.TweetID, favorite.UserID)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
+	//_, err = db.Exec("UPDATE tweet SET liked = (SELECT COUNT(*) FROM likes WHERE tweet_id = ?) WHERE id = ?", like.TweetID, like.TweetID)
+	//if err != nil {
+	//	http.Error(w, err.Error(), http.StatusInternalServerError)
+	//	return
+	//}
+	w.WriteHeader(http.StatusCreated)
+}
+
 func askGemini(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Methods", "POST, GET, OPTIONS, PUT, DELETE")
@@ -609,6 +707,8 @@ func main() {
 	http.HandleFunc("/followreq", followreq)
 	http.HandleFunc("/gemini", askGemini)
 	http.HandleFunc("/execute", executeOnGemini)
+	http.HandleFunc("/favorite", togglefavorite)
+	http.HandleFunc("/getfavorite", getfavorite)
 	// ③ Ctrl+CでHTTPサーバー停止時にDBをクローズする
 	closeDBWithSysCall()
 
